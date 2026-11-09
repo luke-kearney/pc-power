@@ -36,7 +36,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 API_VERSION = 1
 LOG = logging.getLogger("pc-power-agent")
 
@@ -609,6 +609,13 @@ def parse_ddc_getvcp(text: str) -> dict:
     return out
 
 
+# For the frequent reads/writes. Without --skip-ddc-checks, ddcutil re-probes how each monitor
+# reports unsupported features on every invocation and some monitors make it log 4 warnings to
+# syslog each time (--syslog=NEVER does not silence them). Skipping is also ~5-10x faster.
+# `detect` (every 10 min) keeps the checks.
+DDC_FAST = ["ddcutil", "--skip-ddc-checks"]
+
+
 class MonitorPoller(threading.Thread):
     """Reads monitors over DDC/CI in the background (slow: ~1 s per monitor)."""
 
@@ -649,7 +656,7 @@ class MonitorPoller(threading.Thread):
         missing = False
         for bus in buses:
             with self.ddc_lock:
-                text = run(["ddcutil", "--bus", str(bus), "getvcp", "10", "D6", "--terse"], timeout=15)
+                text = run([*DDC_FAST, "--bus", str(bus), "getvcp", "10", "D6", "--terse"], timeout=15)
             if text is None:  # asleep monitors often stop answering DDC
                 vals = {"power_mode": "unknown", "responding": False}
                 missing = True
@@ -679,7 +686,7 @@ class MonitorPoller(threading.Thread):
             if not any(d["bus"] == bus for d in self.displays):
                 return False
         with self.ddc_lock:
-            ok = run(["ddcutil", "--bus", str(bus), "setvcp", "10", str(value)], timeout=15) is not None
+            ok = run([*DDC_FAST, "--bus", str(bus), "setvcp", "10", str(value)], timeout=15) is not None
         if ok:
             with self.lock:
                 self.state.setdefault(bus, {})["brightness"] = value
@@ -1025,7 +1032,12 @@ def main(argv=None):
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(levelname)s %(message)s")
 
-    cfg = load_config(args.config)
+    try:
+        cfg = load_config(args.config)
+    except PermissionError:
+        p.error(f"cannot read {args.config}: run with sudo (the config holds the token and is root-only)")
+    except (OSError, tomllib.TOMLDecodeError) as err:
+        p.error(f"bad config {args.config}: {err}")
     cpu, gpus = build_sources(args, cfg)
     if cpu is None and not args.fake:
         LOG.warning("no readable RAPL package domain (not root, or unsupported CPU)")

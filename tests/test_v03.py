@@ -174,5 +174,19 @@ class AgentParserTests(unittest.TestCase):
             self.assertEqual(th["nvme"][0]["temp_c"], 41.85)
 
 
+class DdcCommandTests(unittest.TestCase):
+    def test_poll_and_set_skip_ddc_checks(self):
+        from unittest import mock
+        poller = A.MonitorPoller.__new__(A.MonitorPoller)
+        A.MonitorPoller.__init__(poller, Path("/nonexistent"), 30)
+        poller.displays = [{"bus": 3}]
+        with mock.patch.object(A, "run", return_value="VCP 10 C 54 100\nVCP D6 SNC x01\n") as run:
+            poller._poll()
+            poller.set_brightness(3, 50)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0][:2], ["ddcutil", "--skip-ddc-checks"])
+        self.assertEqual(poller.state[3]["brightness"], 50)
+
+
 if __name__ == "__main__":
     unittest.main()
