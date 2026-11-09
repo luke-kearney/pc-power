@@ -1,0 +1,9 @@
+# Dev-only agent config (bound to localhost so it never appears on the LAN).
+listen = "127.0.0.1"
+port = 8765
+token = "dev-token"
+sample_interval = 1.0
+allow_power_control = true
+power_dry_run = true        # Suspend/Shut down/Restart only log "DRY RUN: would run systemctl ..."
+lock_dry_run = false        # Lock screen really locks
+allow_monitor_control = true

@@ -1,0 +1,152 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add a PC",
+        "description": "Connect to a PC running the PC Power agent. The token is printed by the agent's install.sh and stored in /etc/pc-power/config.toml.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Token"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Discovered {name}",
+        "description": "Found the PC Power agent on {name} ({host}). Enter its token to add it.",
+        "data": {
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the agent. Is it running and is the port open?",
+      "invalid_auth": "The agent rejected that token."
+    },
+    "abort": {
+      "already_configured": "This PC is already configured.",
+      "not_supported": "This agent did not advertise a machine ID."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Power estimate",
+        "description": "PC power = (CPU + GPU + disks + controller + fans & pump + RGB + board + USB devices) ÷ PSU efficiency. Monitors are estimated separately (wall-powered). Detected disks: {hdd} HDD, {ssd} SATA SSD, {nvme} NVMe.",
+        "data": {
+          "scan_interval": "Poll interval (seconds)",
+          "disks_w": "Disks (W)",
+          "controller_w": "HBA / RAID controller (W)",
+          "fans_w": "Fans & AIO pump at full speed (W)",
+          "fans_dynamic": "Scale fan power with measured fan speed",
+          "rgb_w": "RGB on fan/RAM/strip headers (W) — not GPU RGB, that's in the GPU reading",
+          "board_w": "Motherboard, RAM, NICs, VRM losses (W)",
+          "efficiency": "PSU efficiency (0.5–1.0)",
+          "offline_w": "PC power when off or asleep (W at the wall, excluding monitors)",
+          "monitor_standby_w": "Each monitor in standby (W)",
+          "grace_polls": "Failed polls before treating the PC as off"
+        },
+        "data_description": {
+          "fans_dynamic": "Uses motherboard fan RPM (power ≈ speed³) against the highest speed seen per header. Run a stress test once so it learns real top speeds.",
+          "rgb_w": "Fan/RAM/strip/AIO-block RGB. GPU RGB is already included in the GPU reading."
+        }
+      },
+      "usb": {
+        "title": "USB devices",
+        "description": "Estimated draw per connected USB device, in watts. Set 0 to ignore a device.\n\n{devices}"
+      },
+      "monitors": {
+        "title": "Monitors",
+        "description": "Power at 100% brightness for each monitor (W, at the wall). Estimate = max × (0.4 + 0.6 × brightness). Defaults come from the panel size.\n\n{monitors}"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "cpu_power": {
+        "name": "CPU power"
+      },
+      "gpu_power": {
+        "name": "GPU power"
+      },
+      "wall_power": {
+        "name": "Estimated power"
+      },
+      "energy": {
+        "name": "Energy"
+      },
+      "usb_power": {
+        "name": "USB devices power"
+      },
+      "monitors_power": {
+        "name": "Monitors power"
+      },
+      "monitors_energy": {
+        "name": "Monitors energy"
+      },
+      "cpu_temp": {
+        "name": "CPU temperature"
+      },
+      "gpu_temp": {
+        "name": "GPU temperature"
+      },
+      "cpu_util": {
+        "name": "CPU usage"
+      },
+      "gpu_util": {
+        "name": "GPU usage"
+      },
+      "memory_used": {
+        "name": "Memory used"
+      },
+      "ram_temp": {
+        "name": "RAM temperature"
+      },
+      "idle_since": {
+        "name": "Idle since"
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "nvme_temp": {
+        "name": "{device} temperature"
+      },
+      "fan_speed": {
+        "name": "Fan {fan}"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "screen_locked": {
+        "name": "Screen locked"
+      },
+      "user_idle": {
+        "name": "Idle"
+      }
+    },
+    "button": {
+      "wake": {
+        "name": "Wake"
+      },
+      "lock": {
+        "name": "Lock screen"
+      },
+      "suspend": {
+        "name": "Suspend"
+      },
+      "poweroff": {
+        "name": "Shut down"
+      },
+      "reboot": {
+        "name": "Restart"
+      }
+    },
+    "number": {
+      "monitor_brightness": {
+        "name": "{monitor} brightness"
+      }
+    }
+  }
+}

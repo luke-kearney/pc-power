@@ -1,0 +1,52 @@
+# Throwaway end-to-end environment. Nothing here touches your real Home Assistant.
+#   docker compose -f dev/compose.yaml up -d      -> HA on http://localhost:8123
+#   docker restart pc-power-ha                    -> after changing integration code
+#   docker compose -f dev/compose.yaml down && rm -rf dev/ha-config   -> reset
+services:
+  ha:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: pc-power-ha
+    network_mode: host            # zeroconf + reach LAN PCs and the local agent
+    environment:
+      - TZ=Europe/London
+    volumes:
+      - ./ha-config:/config
+      - ../custom_components/pc_power:/config/custom_components/pc_power:ro
+    restart: "no"
+
+  # Runs the agent as root in a container, so RAPL is readable without sudo on the host.
+  # Docker masks /sys/devices/virtual/powercap inside containers, so the host /sys is
+  # mounted at /hostsys and the agent reads it via --sysfs-root.
+  agent:
+    build:
+      context: .
+      dockerfile: agent.Dockerfile   # Arch + python + ddcutil (+ loginctl from systemd)
+    image: pc-power-agent-dev
+    container_name: pc-power-agent
+    network_mode: host
+    command: ["python", "-u", "/app/pc_power_agent.py", "--config", "/dev-agent.toml", "--sysfs-root", "/hostsys"]
+    volumes:
+      - ../agent:/app:ro
+      - ./agent.toml:/dev-agent.toml:ro
+      - /sys:/hostsys:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket   # loginctl -> host logind
+      - /run/systemd/system:/run/systemd/system:ro   # makes loginctl believe it's on a systemd host
+      # NVIDIA only (with the nvidia devices below): remove on AMD/Intel machines
+      - /usr/lib/libnvidia-ml.so.1:/usr/lib/libnvidia-ml.so.1:ro
+    cap_add:
+      - NET_ADMIN   # ETHTOOL_GWOL (Wake-on-LAN status) needs it; root on a real host has it
+    devices:
+      - /dev/nvidiactl
+      - /dev/nvidia0
+      # DDC/CI (monitors): list your machine's buses (ls /dev/i2c-*); these are one dev box's
+      - /dev/i2c-0
+      - /dev/i2c-1
+      - /dev/i2c-2
+      - /dev/i2c-3
+      - /dev/i2c-4
+      - /dev/i2c-5
+      - /dev/i2c-6
+      - /dev/i2c-7
+      - /dev/i2c-8
+    restart: "no"
